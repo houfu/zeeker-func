@@ -1,0 +1,566 @@
+{
+  "name": "SG Law Cookies",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://cookies.your-amicus.app/index.xml",
+        "options": {}
+      },
+      "id": "a1d82c62-909d-4c1d-af5c-f5e2a6e26c9e",
+      "name": "RSS Read",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        1120,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "6760b1bd-93e1-46d5-8e14-886998a5cbce",
+              "leftValue": "={{ $json.title }}",
+              "rightValue": "=SG Law Cookies",
+              "operator": {
+                "type": "string",
+                "operation": "startsWith"
+              }
+            },
+            {
+              "id": "3b1ac1d0-42b0-4ec9-86e0-40951c3c3b84",
+              "leftValue": "={{ $json.pubDate.toDateTime() }}",
+              "rightValue": "={{ $json.lastExecution.toDateTime().plus(1, \"day\") }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "3c724db2-ee51-45a2-8a33-7a592e235ec6",
+      "name": "Filter",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        1560,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/resource_create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={            \n  \"package_id\": \"sg-law-cookies\",\n  \"url\": {{ $json[\"resource_url\"].quote() }},\n  \"description\": \"SG Law Cookies, an algorithmically produced digest of legal news in Singapore, for {{ $json.date_published.toDateTime().format(\"dd MMMM yyyy\") }}\", \n  \"name\": {{ $json[\"title\"].quote() }}\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 3,
+              "batchInterval": 5000
+            }
+          }
+        }
+      },
+      "id": "71091787-54da-49fc-b319-f5f2f471adff",
+      "name": "Create CKAN Resource",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2380,
+        500
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {}
+      },
+      "id": "1c507a9b-0212-4c9b-b8bf-2f743a363260",
+      "name": "Visit Cookie",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1760,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "content",
+              "cssSelector": ".post-content"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "199b8a4b-136b-47ea-b85f-a9ce243b4c59",
+      "name": "HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        1960,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "9a4f536d-914d-40cd-b1f5-54d9c14283c0",
+              "name": "content",
+              "value": "={{ $json['content'] }}",
+              "type": "string"
+            },
+            {
+              "id": "49a2b3cf-d8ea-4169-86f1-2067351f93b7",
+              "name": "date_published",
+              "value": "={{ $('Filter').item.json.pubDate }}",
+              "type": "string"
+            },
+            {
+              "id": "43a48675-18a1-46be-8c9a-4cf6c62af5de",
+              "name": "title",
+              "value": "={{ $('Filter').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "21bb9c8d-683a-432f-8293-4f7aa5ba8dbc",
+              "name": "resource_url",
+              "value": "={{ $('Filter').item.json.link }}",
+              "type": "string"
+            }
+          ]
+        },
+        "includeOtherFields": "=",
+        "options": {}
+      },
+      "id": "95d7033b-70e6-4a33-8c50-4b812244fbe8",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2160,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/resource_view_create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "resource_id",
+              "value": "={{ $json.result.id }}"
+            },
+            {
+              "name": "title",
+              "value": "Website view"
+            },
+            {
+              "name": "view_type",
+              "value": "webpage_view"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 5000
+            }
+          }
+        }
+      },
+      "id": "f5e848a6-fc08-4077-b6d8-5792b7b48726",
+      "name": "Create Resource View1",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3000,
+        500
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6c0a96d3-47cf-48f8-ba40-49d370c0ee2b",
+              "name": "zeeker_url",
+              "value": "=https://ckan.zeeker.sg/dataset/sg-law-cookies/resource/{{ $json.result.id }}",
+              "type": "string"
+            },
+            {
+              "id": "439f8bf1-d574-45c1-8919-0d46dff2443c",
+              "name": "title",
+              "value": "={{ $('Edit Fields').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "31f3408f-c09b-409d-828c-238f7480a067",
+              "name": "content",
+              "value": "={{ $('Edit Fields').item.json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "cd18b2f6-24c6-412b-80a3-72e410a7d0dd",
+              "name": "resource_url",
+              "value": "={{ $('Edit Fields').item.json.resource_url }}",
+              "type": "string"
+            },
+            {
+              "id": "6119a24e-263f-4c58-af1f-fee1aaee4727",
+              "name": "date_published",
+              "value": "={{ $('Edit Fields').item.json.date_published }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "6824e25b-ad36-44c3-9302-c4c36e0f5d0a",
+      "name": "Get resource id",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2780,
+        700
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/datastore_upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"resource_id\": \"a865bb4b-4195-4b4e-99d3-24909dcdceed\",\n  \"method\": \"insert\",\n  \"force\": \"True\",\n  \"records\": [\n    {\n      \"date_published\": {{ $json[\"date_published\"].quote() }},\n      \"title\": {{ $json.title.quote() }},\n      \"content\": {{ $json.content.replaceAll(\"\\n\", \"\\\\n\").quote() }},\n      \"resource_url\": {{ $json.resource_url.quote() }},\n      \"zeeker_url\": {{ $json.zeeker_url.quote() }}\n    }\n  ]\n} ",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "id": "4380acba-fd30-4d97-8d74-bc917e90967e",
+      "name": "Create DataStore Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3000,
+        700
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://ckan.zeeker.sg/api/3/action/datastore_search",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "resource_id",
+              "value": "a865bb4b-4195-4b4e-99d3-24909dcdceed"
+            },
+            {
+              "name": "limit",
+              "value": "1"
+            },
+            {
+              "name": "sort",
+              "value": "date_published desc"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1c6ab1cd-7431-4eed-a91a-33831f177b3c",
+      "name": "Get Last Execution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        900,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "0b7742bd-0a62-45c2-aa8f-0710a9a3f1d2",
+              "name": "link",
+              "value": "={{ $json.link }}",
+              "type": "string"
+            },
+            {
+              "id": "714440c1-628d-47b6-b7ea-791ecdbaccc5",
+              "name": "pubDate",
+              "value": "={{ $json.pubDate }}",
+              "type": "string"
+            },
+            {
+              "id": "7dc1b741-b6ae-4edf-b4b7-e15a46e46ce3",
+              "name": "lastExecution",
+              "value": "={{ $('Get Last Execution').item.json.result.records[0].date_published }}",
+              "type": "string"
+            },
+            {
+              "id": "7771e85a-d925-416b-8ab6-8e9464470db9",
+              "name": "title",
+              "value": "={{ $json.title }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "78dc4f2c-3607-44f1-9398-0808b42a8e04",
+      "name": "Merge Data",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1340,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 6
+            }
+          ]
+        }
+      },
+      "id": "e56dd8db-64dc-457e-87cd-2e82bb20d3fc",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        660,
+        500
+      ]
+    },
+    {
+      "parameters": {
+        "content": "It should be possible at some point to download PDFs of a cookie. "
+      },
+      "id": "5a7ada7d-14e7-4888-a692-fc4837cc518c",
+      "name": "Sticky Note",
+      "type": "n8n-nodes-base.stickyNote",
+      "typeVersion": 1,
+      "position": [
+        2020,
+        700
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Merge Data",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Visit Cookie",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Visit Cookie": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Create CKAN Resource",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CKAN Resource": {
+      "main": [
+        [
+          {
+            "node": "Create Resource View1",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Get resource id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get resource id": {
+      "main": [
+        [
+          {
+            "node": "Create DataStore Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Execution": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge Data": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Last Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "eca66544-ca9c-4202-8f30-84d46c99e7cf",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cae89cbfcc82f2492650ce7cbaeefe4a04e5c318b1ee913cbf47d58143b73d2"
+  },
+  "id": "TQVXNw5aopCdko8I",
+  "tags": [
+    {
+      "createdAt": "2024-04-06T11:40:44.245Z",
+      "updatedAt": "2024-04-06T11:40:44.245Z",
+      "id": "ro2EFohmBvXuWGAQ",
+      "name": "zeeker"
+    }
+  ]
+}

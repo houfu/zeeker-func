@@ -1,0 +1,1252 @@
+{
+  "name": "SLW Commentaries",
+  "nodes": [
+    {
+      "parameters": {
+        "url": "https://www.singaporelawwatch.sg/Portals/0/RSS/Commentaries.xml",
+        "options": {}
+      },
+      "id": "ffa68ca8-296e-4abb-9787-ca0af9007a9a",
+      "name": "Get Commentary RSS",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        820,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "trim": true
+        }
+      },
+      "id": "4b3f5dcd-357f-4325-98e5-faa9f72c2d44",
+      "name": "XML",
+      "type": "n8n-nodes-base.xml",
+      "typeVersion": 1,
+      "position": [
+        1000,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "fieldToSplitOut": "rss.channel.item",
+        "options": {}
+      },
+      "id": "8d137bcd-cc4a-4db9-bc27-378bcebbe46a",
+      "name": "Split Out",
+      "type": "n8n-nodes-base.splitOut",
+      "typeVersion": 1,
+      "position": [
+        1180,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": false,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "8079669d-c099-4973-bc05-a6e4695c72ff",
+              "leftValue": "={{ $json.link }}",
+              "rightValue": "=pdf",
+              "operator": {
+                "type": "string",
+                "operation": "endsWith"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {
+          "ignoreCase": true
+        }
+      },
+      "id": "feaba157-7918-4128-9946-d305cad3aec3",
+      "name": "If it is a PDF",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        1500,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "model": "gpt-3.5-turbo-16k",
+        "options": {}
+      },
+      "id": "03991eb9-90a2-4629-9f4f-42fc37f2ad6c",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        2600,
+        520
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "4a21YMc9zo7d9uIr",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6f770668-14cb-4dec-9a63-40114a332876",
+              "name": "summary",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "760941ac-fe7c-4fc9-813d-f4677f72de83",
+              "name": "title",
+              "value": "={{ $('Fix Fields').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "78cd9e55-28c3-475f-957e-1b6f76ee369d",
+              "name": "resource_url",
+              "value": "={{ $('Fix Fields').item.json.resource_url }}",
+              "type": "string"
+            },
+            {
+              "id": "775f6c69-298f-4e03-8f40-33a95d8fbc0a",
+              "name": "published_date",
+              "value": "={{ $('Fix Fields').item.json.published_date }}",
+              "type": "string"
+            },
+            {
+              "id": "1ed36226-b56e-4287-a205-204e25a556cc",
+              "name": "author",
+              "value": "={{ $('Fix Fields').item.json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "855200bc-c499-4e1a-8782-42671ed1a0cb",
+              "name": "content",
+              "value": "={{ $('Get Readable Content').item.json.textContent }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "75767d00-cd48-46e9-adf2-c1e4db565701",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2980,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://faas-sgp1-18bc02ac.doserverless.co/api/v1/namespaces/fn-304098ea-3920-4499-a898-1a6629b4d9f7/actions/misc_functions/get_readable_webpage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "blocking",
+              "value": "true"
+            },
+            {
+              "name": "result",
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic MDg1MTEzMjAtMDRkMS00YWEwLWE5NzgtYjQwNzAzNmY5Y2RkOjdtTlBwRGp4SFBsNXY2V2RvNkNDcDdFR2NjR3lJd05tNDJqcUxkWXkxd240YlpFeW1pcWZycGxOOHBmOFlTSlc="
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source_url",
+              "value": "={{ $json.resource_url }}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "03b13db0-2b58-48b1-822b-1fbfea70d9a3",
+      "name": "Get Readable Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2200,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6c0a96d3-47cf-48f8-ba40-49d370c0ee2b",
+              "name": "zeeker_url",
+              "value": "=https://ckan.zeeker.sg/dataset/slw-commentaries/resource/{{ $json.result.id }}",
+              "type": "string"
+            },
+            {
+              "id": "439f8bf1-d574-45c1-8919-0d46dff2443c",
+              "name": "title",
+              "value": "={{ $('Edit Fields').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "31f3408f-c09b-409d-828c-238f7480a067",
+              "name": "content",
+              "value": "={{ $('Edit Fields').item.json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "cd18b2f6-24c6-412b-80a3-72e410a7d0dd",
+              "name": "resource_url",
+              "value": "={{ $('Edit Fields').item.json.resource_url }}",
+              "type": "string"
+            },
+            {
+              "id": "6119a24e-263f-4c58-af1f-fee1aaee4727",
+              "name": "date_published",
+              "value": "={{ $('Edit Fields').item.json.published_date }}",
+              "type": "string"
+            },
+            {
+              "id": "20330efb-95b0-43cc-bb0c-fc553ee2868e",
+              "name": "author",
+              "value": "={{ $('Edit Fields').item.json.author }}",
+              "type": "string"
+            },
+            {
+              "id": "9c138ac6-f759-4de0-b6dc-642fca894626",
+              "name": "summary",
+              "value": "={{ $('Edit Fields').item.json.summary }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "f968e685-d82e-4018-abb2-c0acfb11023c",
+      "name": "Get resource id",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        3360,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "0b65f0d3-5a7d-4941-a7e8-a12314f61406",
+              "leftValue": "={{ $json.textContent }}",
+              "rightValue": "=",
+              "operator": {
+                "type": "string",
+                "operation": "notEmpty",
+                "singleValue": true
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "868e6d4c-ce39-4c01-a8ee-f0367d2038c6",
+      "name": "If",
+      "type": "n8n-nodes-base.if",
+      "typeVersion": 2,
+      "position": [
+        2420,
+        640
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=As an AI expert in legal affairs, your task is to provide concise, yet comprehensive summaries of legal news articles for time-constrained attorneys. \nThese summaries should highlight the critical legal aspects, relevant precedents, and implications of the issues discussed in the articles.  Despite their complexity, the summaries should be accessible and digestible, written in an engaging and  conversational style. Accuracy and attention to detail are essential, as the readers will be legal professionals who  may use these summaries to inform their practice.  \n\n### Instructions:  \n1. Begin the summary with a brief introduction of the topic of the article. \n2. Outline the main legal aspects, implications, and precedents highlighted in the article.  \n3. End the summary with a succinct conclusion or takeaway.  \nAim for summaries to be no more than five sentences, but ensure they efficiently deliver the key legal insights,  making them beneficial for quick comprehension. The end goal is to help the lawyers understand the crux of the  articles without having to read them in their entirety.\n\n### This is the article:\n{{ $json.textContent }}\n###\n\nStart with \"This article"
+      },
+      "id": "1c7596a8-a9c6-4331-b86c-b2611ebe7cfd",
+      "name": "Summarize content",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        2640,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "2cf23f33-5754-4592-aeae-0b140ac9009c",
+              "name": "title",
+              "value": "={{ $json.author }}: {{ $json.title }} ",
+              "type": "string"
+            },
+            {
+              "id": "304156c3-b21c-4399-ace6-190833adb2d7",
+              "name": "resource_url",
+              "value": "={{ $json.source_link }}",
+              "type": "string"
+            },
+            {
+              "id": "4e8ca667-4fae-48a8-9603-19994294ea20",
+              "name": "published_date",
+              "value": "={{ $json.date }}",
+              "type": "string"
+            },
+            {
+              "id": "45c5c78b-afb0-4ea8-af19-98198003b9f3",
+              "name": "author",
+              "value": "={{ $json.author }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "1403b349-790c-47c6-a353-18d92253f946",
+      "name": "Fix Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2000,
+        620
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://ckan.zeeker.sg/api/3/action/datastore_search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "resource_id",
+              "value": "f5e54f59-0be0-42f1-a7df-6b2c1e831889"
+            },
+            {
+              "name": "q",
+              "value": "{\"name\":\"slw-commentaries\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "4b5108ad-d287-401b-acc1-c007aec4dc36",
+      "name": "Get Last Execution",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        640,
+        340
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "hoursInterval": 8,
+              "triggerAtMinute": 25
+            }
+          ]
+        }
+      },
+      "id": "8150903b-7168-46c8-97ff-a1bea5a1e2fc",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        460,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "6511e9a5-1061-4b9d-b756-751345c48106",
+              "leftValue": "={{ $json.pubDate.toDateTime().toLocal() }}",
+              "rightValue": "={{ $('Get Last Execution').item.json.result.records[0].time.toDateTime().toLocal() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "after"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "c9bcee41-00ae-4ca7-827c-fbad6791b41f",
+      "name": "Get Latest",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        1360,
+        340
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/datastore_upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"resource_id\": \"06441d57-ebf3-4d98-8225-3746b529f650\",\n  \"method\": \"insert\",\n  \"force\": \"True\",\n  \"records\": [\n    {\n      \"date_published\": {{ $json[\"date_published\"].quote() }},\n      \"title\": {{ $json.title.quote() }},\n      \"content\": {{ $json.content.replaceAll(\"\\n\", \" \\\\n\").quote() }},\n      \"summary\": {{ $json.summary.replaceAll(\"\\n\", \"\\\\n\").quote() }},\n      \"resource_url\": {{ $json.resource_url.quote() }},\n      \"zeeker_url\": {{ $json.zeeker_url.quote() }},\n      \"author\": {{ $json[\"author\"].quote() }}\n    }\n  ]\n} ",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "id": "df981225-925f-4563-94a5-c85b722820ec",
+      "name": "Create DataStore Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3580,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/datastore_upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"resource_id\": \"f5e54f59-0be0-42f1-a7df-6b2c1e831889\",\n  \"method\": \"update\",\n  \"force\": \"True\",\n  \"records\": [\n    {\n      \"name\": \"slw-commentaries\",\n      \"time\": {{ $('Schedule Trigger').item.json.timestamp.toDateTime().toLocal().toISO().quote() }}\n    }\n  ]\n} ",
+        "options": {}
+      },
+      "id": "02773e36-acb3-44db-ad9a-394ef1748d5a",
+      "name": "Post Last Execution Time",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1200,
+        600
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "={{ $json.link }}",
+        "options": {}
+      },
+      "id": "a7e5c6ae-51d9-4c51-a6c5-8437151f73d1",
+      "name": "Get PDF",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        1780,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/resource_create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={            \n  \"package_id\": \"slw-commentaries\",\n  \"url\": {{ $json[\"resource_url\"].quote() }},\n  \"description\": {{ $json[[\"summary\"]].replaceAll(\"\\n\", \"\").quote() }},\n  \"name\": {{ $json[\"title\"].quote() }}\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2
+            }
+          }
+        }
+      },
+      "id": "ba0b88a6-8531-456d-b549-fe14d4b3e249",
+      "name": "Create CKAN Resource (HTML)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3180,
+        620
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "operation": "pdf",
+        "options": {
+          "joinPages": true,
+          "keepSource": "json"
+        }
+      },
+      "id": "f724e4ce-f36b-4043-8e4a-1a94ccd81858",
+      "name": "Extract from File",
+      "type": "n8n-nodes-base.extractFromFile",
+      "typeVersion": 1,
+      "position": [
+        1980,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/resource_create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendBody": true,
+        "contentType": "multipart-form-data",
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "package_id",
+              "value": "slw-commentaries"
+            },
+            {
+              "name": "url",
+              "value": "={{ $('If it is a PDF').item.json.link }}"
+            },
+            {
+              "parameterType": "formBinaryData",
+              "name": "upload",
+              "inputDataFieldName": "=data"
+            },
+            {
+              "name": "name",
+              "value": "={{ $('If it is a PDF').item.json.author }}: {{ $('If it is a PDF').item.json.title }} "
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2
+            }
+          }
+        }
+      },
+      "id": "4f26cb6e-63d9-4179-9c7a-4a944b0af4bd",
+      "name": "Create CKAN Resource (PDF)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        1980,
+        100
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {
+          "clashHandling": {
+            "values": {
+              "resolveClash": "addSuffix"
+            }
+          }
+        }
+      },
+      "id": "a8ccfcea-5aba-43c6-bab7-96942cab1abc",
+      "name": "Merge",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        2840,
+        180
+      ]
+    },
+    {
+      "parameters": {
+        "mode": "combine",
+        "combinationMode": "multiplex",
+        "options": {}
+      },
+      "id": "1aa4cb0d-47b7-47fd-b6f0-b9f1cad661d6",
+      "name": "Merge1",
+      "type": "n8n-nodes-base.merge",
+      "typeVersion": 2.1,
+      "position": [
+        3040,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6c0a96d3-47cf-48f8-ba40-49d370c0ee2b",
+              "name": "zeeker_url",
+              "value": "=https://ckan.zeeker.sg/dataset/slw-commentaries/resource/{{ $json.result.id }}",
+              "type": "string"
+            },
+            {
+              "id": "439f8bf1-d574-45c1-8919-0d46dff2443c",
+              "name": "title",
+              "value": "={{ $json.result.name }}",
+              "type": "string"
+            },
+            {
+              "id": "31f3408f-c09b-409d-828c-238f7480a067",
+              "name": "content",
+              "value": "={{ $json.text_1 }}",
+              "type": "string"
+            },
+            {
+              "id": "cd18b2f6-24c6-412b-80a3-72e410a7d0dd",
+              "name": "resource_url",
+              "value": "={{ $json.link_1 }}",
+              "type": "string"
+            },
+            {
+              "id": "6119a24e-263f-4c58-af1f-fee1aaee4727",
+              "name": "date_published",
+              "value": "={{ $json.pubDate_1 }}",
+              "type": "string"
+            },
+            {
+              "id": "20330efb-95b0-43cc-bb0c-fc553ee2868e",
+              "name": "author",
+              "value": "={{ $json.author_1 }}",
+              "type": "string"
+            },
+            {
+              "id": "9c138ac6-f759-4de0-b6dc-642fca894626",
+              "name": "summary",
+              "value": "={{ $json.response_2.text }}",
+              "type": "string"
+            },
+            {
+              "id": "81baeadb-2eb4-4f75-adb4-13be2c3842f7",
+              "name": "id",
+              "value": "={{ $json.result.id }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "0324e214-7bb2-4d5e-b1bf-0a6f7a1d543f",
+      "name": "Get ready for datastore",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        3240,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/datastore_upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"resource_id\": \"06441d57-ebf3-4d98-8225-3746b529f650\",\n  \"method\": \"insert\",\n  \"force\": \"True\",\n  \"records\": [\n    {\n      \"date_published\": {{ $json[\"date_published\"].quote() }},\n      \"title\": {{ $json.title.quote() }},\n      \"content\": {{ $json.content.replaceAll(\"\\n\", \" \\\\n\").quote() }},\n      \"summary\": {{ $json.summary.replaceAll(\"\\n\", \"\\\\n\").quote() }},\n      \"resource_url\": {{ $json.resource_url.quote() }},\n      \"zeeker_url\": {{ $json.zeeker_url.quote() }},\n      \"author\": {{ $json[\"author\"].quote() }}\n    }\n  ]\n} ",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "id": "0d09878a-573b-422b-bfa2-2cb9fcc40a4f",
+      "name": "Create DataStore Record (PDF)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3740,
+        100
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/resource_view_create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "resource_id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "title",
+              "value": "PDF view"
+            },
+            {
+              "name": "view_type",
+              "value": "pdf_view"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2,
+              "batchInterval": 5000
+            }
+          }
+        }
+      },
+      "id": "81a9c8af-240e-4a08-9e64-484e8ef6e3b9",
+      "name": "Create Resource View _PDF+",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3740,
+        -80
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/resource_update",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "id",
+              "value": "={{ $json.id }}"
+            },
+            {
+              "name": "description",
+              "value": "={{ $json.summary }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "id": "c6758b8a-44ea-45cd-99e2-a0a195d9f48a",
+      "name": "Updatge Respource (PDF)",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3740,
+        300
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      },
+      "onError": "continueRegularOutput"
+    },
+    {
+      "parameters": {
+        "compare": "selectedFields",
+        "fieldsToCompare": "resource_url",
+        "options": {}
+      },
+      "id": "44ddc884-3fc5-4f8d-a195-30c0b1f687d4",
+      "name": "Remove Duplicates",
+      "type": "n8n-nodes-base.removeDuplicates",
+      "typeVersion": 1,
+      "position": [
+        3460,
+        100
+      ]
+    },
+    {
+      "parameters": {
+        "options": {
+          "summarizationMethodAndPrompts": {
+            "values": {
+              "combineMapPrompt": "As an AI expert in legal affairs, your task is to provide concise, yet comprehensive summaries of legal news articles for time-constrained attorneys. \nThese summaries should highlight the critical legal aspects, relevant precedents, and implications of the issues discussed in the articles.  Despite their complexity, the summaries should be accessible and digestible, written in an engaging and  conversational style. Accuracy and attention to detail are essential, as the readers will be legal professionals who  may use these summaries to inform their practice.  \n\n### Instructions:  \n1. Begin the summary with a brief introduction of the topic of the article. \n2. Outline the main legal aspects, implications, and precedents highlighted in the article.  \n3. End the summary with a succinct conclusion or takeaway.  \nAim for summaries to be no more than five sentences, but ensure they efficiently deliver the key legal insights,  making them beneficial for quick comprehension. The end goal is to help the lawyers understand the crux of the  articles without having to read them in their entirety.\n\n\n\"{text}\"\n\n\nCONCISE SUMMARY:",
+              "prompt": "As an AI expert in legal affairs, your task is to provide concise, yet comprehensive summaries of legal news articles for time-constrained attorneys. \nThese summaries should highlight the critical legal aspects, relevant precedents, and implications of the issues discussed in the articles.  Despite their complexity, the summaries should be accessible and digestible, written in an engaging and  conversational style. Accuracy and attention to detail are essential, as the readers will be legal professionals who  may use these summaries to inform their practice.  \n\n### Instructions:  \n1. Begin the summary with a brief introduction of the topic of the article. \n2. Outline the main legal aspects, implications, and precedents highlighted in the article.  \n3. End the summary with a succinct conclusion or takeaway.  \nAim for summaries to be no more than five sentences, but ensure they efficiently deliver the key legal insights,  making them beneficial for quick comprehension. The end goal is to help the lawyers understand the crux of the  articles without having to read them in their entirety.\n\n\n\n\"{text}\"\n\n\nCONCISE SUMMARY:"
+            }
+          }
+        }
+      },
+      "id": "d08c8990-19a8-4886-b6f9-aa3230c41ece",
+      "name": "Summarization Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainSummarization",
+      "typeVersion": 2,
+      "position": [
+        2280,
+        380
+      ]
+    }
+  ],
+  "pinData": {
+    "If it is a PDF": [
+      {
+        "json": {
+          "title": "Plain and Obvious” Test Applies in Applications for Production of Requested Documents Under Rules of Court 2021: Lutfi Salim bin Talib and another v British and Malayan Trustees Ltd [2024] SGHC 85",
+          "link": "https://www.singaporelawwatch.sg/Portals/0/Commentaries/DrewNapier/2404-01 Plain and Obvious Test ROC2021.pdf",
+          "description": "<p>In Lutfi Salim bin Talib and another v British and Malayan Trustees Ltd [2024] SGHC 85, the High Court held that the court should not go behind filed affidavits for the purposes of deciding an application under O 11 r 3(1) of the Rules of Court 2021, unless there are very strong reasons to do so.</p>",
+          "author": "Drew & Napier LLC",
+          "category": "Drew & Napier LLC",
+          "pubDate": "09 Apr 2024 10:30:00",
+          "eventDate": ""
+        }
+      }
+    ]
+  },
+  "connections": {
+    "Get Commentary RSS": {
+      "main": [
+        [
+          {
+            "node": "XML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "XML": {
+      "main": [
+        [
+          {
+            "node": "Split Out",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post Last Execution Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Split Out": {
+      "main": [
+        [
+          {
+            "node": "Get Latest",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If it is a PDF": {
+      "main": [
+        [
+          {
+            "node": "Get PDF",
+            "type": "main",
+            "index": 0
+          }
+        ],
+        [
+          {
+            "node": "Fix Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize content",
+            "type": "ai_languageModel",
+            "index": 0
+          },
+          {
+            "node": "Summarization Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Create CKAN Resource (HTML)",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Readable Content": {
+      "main": [
+        [
+          {
+            "node": "If",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get resource id": {
+      "main": [
+        [
+          {
+            "node": "Create DataStore Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "If": {
+      "main": [
+        [
+          {
+            "node": "Summarize content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize content": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Fix Fields": {
+      "main": [
+        [
+          {
+            "node": "Get Readable Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Execution": {
+      "main": [
+        [
+          {
+            "node": "Get Commentary RSS",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Last Execution",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Latest": {
+      "main": [
+        [
+          {
+            "node": "If it is a PDF",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get PDF": {
+      "main": [
+        [
+          {
+            "node": "Create CKAN Resource (PDF)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Extract from File",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CKAN Resource (HTML)": {
+      "main": [
+        [
+          {
+            "node": "Get resource id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Extract from File": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Summarization Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CKAN Resource (PDF)": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Merge": {
+      "main": [
+        [
+          {
+            "node": "Merge1",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    },
+    "Merge1": {
+      "main": [
+        [
+          {
+            "node": "Get ready for datastore",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get ready for datastore": {
+      "main": [
+        [
+          {
+            "node": "Remove Duplicates",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Remove Duplicates": {
+      "main": [
+        [
+          {
+            "node": "Create DataStore Record (PDF)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Updatge Respource (PDF)",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Create Resource View _PDF+",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarization Chain": {
+      "main": [
+        [
+          {
+            "node": "Merge",
+            "type": "main",
+            "index": 1
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "cc0f1e30-c1b9-42f4-bc40-1de0b5ff093d",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cae89cbfcc82f2492650ce7cbaeefe4a04e5c318b1ee913cbf47d58143b73d2"
+  },
+  "id": "3Nq03ib97hBRd46Y",
+  "tags": [
+    {
+      "createdAt": "2024-04-06T11:40:44.245Z",
+      "updatedAt": "2024-04-06T11:40:44.245Z",
+      "id": "ro2EFohmBvXuWGAQ",
+      "name": "zeeker"
+    }
+  ]
+}

@@ -1,0 +1,851 @@
+{
+  "name": "Straits Times Mastodon.SG",
+  "nodes": [
+    {
+      "parameters": {
+        "rule": {
+          "interval": [
+            {
+              "field": "hours",
+              "triggerAtMinute": 15
+            }
+          ]
+        }
+      },
+      "id": "1cd94a27-a467-4f65-962c-6421ada94b78",
+      "name": "Schedule Trigger",
+      "type": "n8n-nodes-base.scheduleTrigger",
+      "typeVersion": 1.1,
+      "position": [
+        100,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "url": "https://mastodon.sg/@straits_times.rss",
+        "options": {}
+      },
+      "id": "0d2729ce-3862-440b-a2f6-eab99492b583",
+      "name": "RSS Read",
+      "type": "n8n-nodes-base.rssFeedRead",
+      "typeVersion": 1,
+      "position": [
+        380,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "be0abf24-9acf-4765-ae1f-8cd8bd5ffbfe",
+              "leftValue": "={{ $json.pubDate.toDateTime().toLocal() }}",
+              "rightValue": "={{ $('Get Last Execution Time').item.json.result.records[0].time.toDateTime().toLocal() }}",
+              "operator": {
+                "type": "dateTime",
+                "operation": "afterOrEquals"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "9ea0ec9e-7bec-457c-acc7-68f5381a5367",
+      "name": "Latest Content only",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        560,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "operation": "extractHtmlContent",
+        "dataPropertyName": "content",
+        "extractionValues": {
+          "values": [
+            {
+              "key": "source_link",
+              "cssSelector": "a"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "15defb3c-2aa7-4bf7-9458-3ede71e5cb81",
+      "name": "HTML",
+      "type": "n8n-nodes-base.html",
+      "typeVersion": 1.2,
+      "position": [
+        740,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://faas-sgp1-18bc02ac.doserverless.co/api/v1/namespaces/fn-304098ea-3920-4499-a898-1a6629b4d9f7/actions/misc_functions/get_readable_webpage",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "blocking",
+              "value": "true"
+            },
+            {
+              "name": "result",
+              "value": "true"
+            }
+          ]
+        },
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Authorization",
+              "value": "Basic MDg1MTEzMjAtMDRkMS00YWEwLWE5NzgtYjQwNzAzNmY5Y2RkOjdtTlBwRGp4SFBsNXY2V2RvNkNDcDdFR2NjR3lJd05tNDJqcUxkWXkxd240YlpFeW1pcWZycGxOOHBmOFlTSlc="
+            }
+          ]
+        },
+        "sendBody": true,
+        "bodyParameters": {
+          "parameters": [
+            {
+              "name": "source_url",
+              "value": "={{ $json.source_link }}"
+            }
+          ]
+        },
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 5
+            }
+          }
+        }
+      },
+      "id": "2cc2f430-a074-495a-966d-54464ee9472b",
+      "name": "Get Readable Content",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        940,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "jsonSchema": "{\n  \"type\": \"object\",\n  \"properties\": {\n    \"title\": {\n      \"type\": \"string\",\n      \"description\": \"Title of the source article\"\n    },\n    \"relevant\": {\n      \"type\": \"number\",\n      \"description\": \"This indicates the probability of the article being relevant to Singaporean legal professionals.\"\n    },\n    \"justification\": {\n      \"type\": \"string\",\n      \"description\": \"Briefly explain why the article received this score based on the factors considered.\"\n    }\n  }\n}"
+      },
+      "id": "668ac0c4-8ffd-425e-b55f-9701cf06e15e",
+      "name": "Structured Output Parser",
+      "type": "@n8n/n8n-nodes-langchain.outputParserStructured",
+      "typeVersion": 1.1,
+      "position": [
+        1440,
+        660
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "ad0d452f-70d9-4baa-bc7f-34fa634f5d9d",
+              "name": "relevance",
+              "value": "={{ $json.output.relevant }}",
+              "type": "number"
+            },
+            {
+              "id": "b0a6772b-d4a5-4003-99d4-17545c352d9a",
+              "name": "content",
+              "value": "={{ $('Get Readable Content').item.json.textContent }}",
+              "type": "string"
+            },
+            {
+              "id": "68b0168b-e55f-40c7-be79-8b28c8eeaae2",
+              "name": "published_date",
+              "value": "={{ $('RSS Read').item.json.pubDate }}",
+              "type": "string"
+            },
+            {
+              "id": "ca5ddd3b-4d0d-4c03-813b-39beea107eec",
+              "name": "source_link",
+              "value": "={{ $('HTML').item.json.source_link }}",
+              "type": "string"
+            },
+            {
+              "id": "f5eed3a2-a283-47e3-8fce-0fe3294eaa73",
+              "name": "title",
+              "value": "={{ $('Get Readable Content').item.json.title }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "e333fa48-2bbd-4d65-b8c0-bc2e1e6415b1",
+      "name": "Edit Fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1780,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=As an AI expert in legal affairs, your task is to provide concise, yet comprehensive summaries of legal news articles for time-constrained attorneys. \nThese summaries should highlight the critical legal aspects, relevant precedents, and implications of the issues discussed in the articles.  Despite their complexity, the summaries should be accessible and digestible, written in an engaging and  conversational style. Accuracy and attention to detail are essential, as the readers will be legal professionals who  may use these summaries to inform their practice.  \n\n### Instructions:  \n1. Begin the summary with a brief introduction of the topic of the article. \n2. Outline the main legal aspects, implications, and precedents highlighted in the article.  \n3. End the summary with a succinct conclusion or takeaway.  \nAim for summaries to be no more than five sentences, but ensure they efficiently deliver the key legal insights,  making them beneficial for quick comprehension. The end goal is to help the lawyers understand the crux of the  articles without having to read them in their entirety.\n\n### This is the article:\n{{ $('Get Readable Content').item.json[\"textContent\"] }}\n###\n\nStart with \"This article"
+      },
+      "id": "997a3970-ff80-4644-8ad4-6f1231dc5979",
+      "name": "Summarize content",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        2200,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "c0365d13-78d2-403f-8dc1-1c9f82eb17c6",
+              "name": "summary",
+              "value": "={{ $json.text }}",
+              "type": "string"
+            },
+            {
+              "id": "ffc05d90-f484-4578-99b2-d12f98c9b7ab",
+              "name": "content",
+              "value": "={{ $('Filter').item.json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "802df1d8-4297-456b-bd72-e6553ba32030",
+              "name": "published_date",
+              "value": "={{ $('Filter').item.json.published_date }}",
+              "type": "string"
+            },
+            {
+              "id": "4e41d71b-f2d3-4eb3-8718-bb9925c311a0",
+              "name": "source_link",
+              "value": "={{ $('Filter').item.json.source_link }}",
+              "type": "string"
+            },
+            {
+              "id": "f55c7133-3437-4c42-ad14-f6ac58f071ea",
+              "name": "title",
+              "value": "=ST: {{ $('Filter').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "8a0bd129-5583-475b-bb8b-cb7f9bc19adb",
+              "name": "source",
+              "value": "The Straits Times",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "9caa61cc-0b12-4d4a-abd9-503febf5cc39",
+      "name": "Set fields",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2580,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/resource_create",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={            \n  \"package_id\": \"singapore-law-news-articles\",\n  \"url\": {{ $json[\"source_link\"].quote() }},\n  \"description\": {{ $json[[\"summary\"]].replaceAll(\"\\n\", \"\").quote() }},\n  \"name\": {{ $json[\"title\"].quote() }}\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 2
+            }
+          }
+        }
+      },
+      "id": "c6699768-8538-44c6-8539-c99ec518b067",
+      "name": "Create CKAN Resource",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        2760,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "6c0a96d3-47cf-48f8-ba40-49d370c0ee2b",
+              "name": "zeeker_url",
+              "value": "=https://ckan.zeeker.sg/dataset/singapore-law-news-articles/resource/{{ $json.result.id }}",
+              "type": "string"
+            },
+            {
+              "id": "439f8bf1-d574-45c1-8919-0d46dff2443c",
+              "name": "title",
+              "value": "={{ $('Set fields').item.json.title }}",
+              "type": "string"
+            },
+            {
+              "id": "31f3408f-c09b-409d-828c-238f7480a067",
+              "name": "content",
+              "value": "={{ $('Set fields').item.json.content }}",
+              "type": "string"
+            },
+            {
+              "id": "cd18b2f6-24c6-412b-80a3-72e410a7d0dd",
+              "name": "resource_url",
+              "value": "={{ $('Set fields').item.json.source_link }}",
+              "type": "string"
+            },
+            {
+              "id": "6119a24e-263f-4c58-af1f-fee1aaee4727",
+              "name": "date_published",
+              "value": "={{ $('Set fields').item.json.published_date }}",
+              "type": "string"
+            },
+            {
+              "id": "20330efb-95b0-43cc-bb0c-fc553ee2868e",
+              "name": "source",
+              "value": "={{ $('Set fields').item.json.source }}",
+              "type": "string"
+            },
+            {
+              "id": "9c138ac6-f759-4de0-b6dc-642fca894626",
+              "name": "summary",
+              "value": "={{ $json.result.description }}",
+              "type": "string"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "fec53c8c-724d-41e9-bc16-628890920ace",
+      "name": "Get resource id",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        2940,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/datastore_upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"resource_id\": \"104e12b1-aa30-4f61-af3a-02a5d2206dc9\",\n  \"method\": \"insert\",\n  \"force\": \"True\",\n  \"records\": [\n    {\n      \"date_published\": {{ $json[\"date_published\"].quote() }},\n      \"title\": {{ $json.title.quote() }},\n      \"content\": {{ $json.content.replaceAll(\"\\n\", \"\\\\n\").quote() }},\n      \"summary\": {{ $json.summary.replaceAll(\"\\n\", \"\\\\n\").quote() }},\n      \"resource_url\": {{ $json.resource_url.quote() }},\n      \"zeeker_url\": {{ $json.zeeker_url.quote() }},\n      \"source\": {{ $json[\"source\"].quote() }}\n    }\n  ]\n} ",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "id": "39c976bc-cdc2-44b5-942f-d141e53661e8",
+      "name": "Create DataStore Record",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        3160,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://ckan.zeeker.sg/api/action/datastore_upsert",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n  \"resource_id\": \"f5e54f59-0be0-42f1-a7df-6b2c1e831889\",\n  \"method\": \"update\",\n  \"force\": \"True\",\n  \"records\": [\n    {\n      \"name\": \"st\",\n      \"time\": {{ $('Schedule Trigger').item.json.timestamp.toDateTime().toLocal().toISO().quote() }}\n    }\n  ]\n} ",
+        "options": {}
+      },
+      "id": "85bf74c1-81b5-4dbf-b4c4-0b4898493fcc",
+      "name": "Post Last Execution Time",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        560,
+        560
+      ],
+      "executeOnce": true,
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "url": "https://ckan.zeeker.sg/api/action/datastore_search",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpHeaderAuth",
+        "sendQuery": true,
+        "queryParameters": {
+          "parameters": [
+            {
+              "name": "resource_id",
+              "value": "f5e54f59-0be0-42f1-a7df-6b2c1e831889"
+            },
+            {
+              "name": "q",
+              "value": "{\"name\":\"st\"}"
+            }
+          ]
+        },
+        "options": {}
+      },
+      "id": "faa7fead-f5d2-4f81-901c-2b6ea16fd053",
+      "name": "Get Last Execution Time",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.1,
+      "position": [
+        240,
+        320
+      ],
+      "credentials": {
+        "httpHeaderAuth": {
+          "id": "m9DLKEW1TGK1cNtj",
+          "name": "CKAN Zeeker"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "b393e423-c653-46ac-bfa1-12176fe34b0f",
+      "name": "OpenAI Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatOpenAi",
+      "typeVersion": 1,
+      "position": [
+        2020,
+        580
+      ],
+      "credentials": {
+        "openAiApi": {
+          "id": "4a21YMc9zo7d9uIr",
+          "name": "OpenAi account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "method": "POST",
+        "url": "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-pro-latest:generateContent",
+        "authentication": "genericCredentialType",
+        "genericAuthType": "httpQueryAuth",
+        "sendHeaders": true,
+        "headerParameters": {
+          "parameters": [
+            {
+              "name": "Content-Type",
+              "value": "application/json"
+            }
+          ]
+        },
+        "sendBody": true,
+        "specifyBody": "json",
+        "jsonBody": "={\n\t\"contents\": [\n\t\t{\n\t\t\t\"parts\": [{ \"text\": \"{{ $json[\"title\"] }}\"}]\n\t\t}\n\t],\n\t\"systemInstruction\": {\n\t\t\"parts\": [\n\t\t\t{\n\t\t\t\t\"text\": \"your task is to analyse titles of news paper articles to find content which is relevant to legal professionals.\\n\\n**Consider the following factors and assign a relevance score (0-1) for each:**\\n\\n* **Legal keywords:** Does the title contain keywords related to Singaporean law, legal concepts, or specific court cases? (e.g., defamation, contract dispute, Intellectual Property, Court of Appeal)\\n* **Government/regulatory keywords:** Does the title mention Singaporean government agencies, ministries, or regulatory bodies relevant to legal matters? (e.g., Ministry of Law, Monetary Authority of Singapore, Singapore Police Force)\\n* **Singapore focus:** Does the title explicitly mention Singapore or suggest the situation applies within the Singaporean context?\\n* **Business/finance keywords:** Are there keywords suggesting business or financial issues that could have legal implications in Singapore? (e.g., merger, bankruptcy, data breach)\\n\\n**Overall relevance score:**\\n\\nCalculate a weighted average of the individual scores, with a higher weight for \\\"Legal keywords\\\" and a lower weight when the article does not contain any keywords relating to legal, business or financial issues. \\n\\n**Output format**\\nOutput in JSON in the following schema:\\n{\\n  \\\"type\\\": \\\"object\\\",\\n  \\\"properties\\\": {\\n    \\\"title\\\": {\\n      \\\"type\\\": \\\"string\\\",\\n      \\\"description\\\": \\\"Title of the source article\\\"\\n    },\\n    \\\"relevant\\\": {\\n      \\\"type\\\": \\\"number\\\",\\n      \\\"description\\\": \\\"This indicates the probability of the article being relevant to Singaporean legal professionals.\\\"\\n    },\\n    \\\"justification\\\": {\\n      \\\"type\\\": \\\"string\\\",\\n      \\\"description\\\": \\\"Briefly explain why the article received this score based on the factors considered.\\\"\\n    }\\n  }\\n}\\n\\n**Example:**\\n\\n**Input:** Title: \\\"New Singapore Law Aims to Combat Online Hate Speech\\\"\\n\\n**Output:** {\\\"title\\\":\\\"New Singapore Law Aims to Combat Online Hate Speech\\\", \\\"relevant\\\":0.5, \\\"justification\\\":\\\" The title mentions a new law in Singapore (Singapore focus) related to a legal concept (hate speech).\\\"}\\n\\n**Input:** Title: \\\"Free skin, body & hair treatments at Jurong Point Roadshow from Apr. 8 - 14, 2024\\\"\\n\\n**Output:***{\\\"title\\\":\\\"Free skin, body & hair treatments at Jurong Point Roadshow from Apr. 8 - 14, 2024\\\", \\\"relevant\\\":0.1, \\\"justification\\\":\\\"There are no legal keywords or issues suggested by the title and the suggestion of an offer is not relevant to legal professionals.\\\"}\"\n\t\t\t}\n\t\t]\n\t},\n\t\"generationConfig\": {\n\t\t\"temperature\": 1,\n\t\t\"top_p\": 0.95,\n\t\t\"top_k\": 0,\n\t\t\"max_output_tokens\": 8192,\n\t\t\"response_mime_type\": \"application/json\"\n\t},\n\t\"safety_settings\": [\n\t\t{\n\t\t\t\"category\": \"HARM_CATEGORY_HARASSMENT\",\n\t\t\t\"threshold\": \"BLOCK_NONE\"\n\t\t},\n\t\t{\n\t\t\t\"category\": \"HARM_CATEGORY_HATE_SPEECH\",\n\t\t\t\"threshold\": \"BLOCK_NONE\"\n\t\t},\n\t\t{\n\t\t\t\"category\": \"HARM_CATEGORY_SEXUALLY_EXPLICIT\",\n\t\t\t\"threshold\": \"BLOCK_NONE\"\n\t\t},\n\t\t{\n\t\t\t\"category\": \"HARM_CATEGORY_DANGEROUS_CONTENT\",\n\t\t\t\"threshold\": \"BLOCK_NONE\"\n\t\t}\n\t]\n}",
+        "options": {
+          "batching": {
+            "batch": {
+              "batchSize": 1,
+              "batchInterval": 2000
+            }
+          }
+        }
+      },
+      "id": "b42b120d-ae46-4437-927b-38c251481af2",
+      "name": "Google Gemini Request",
+      "type": "n8n-nodes-base.httpRequest",
+      "typeVersion": 4.2,
+      "position": [
+        800,
+        900
+      ],
+      "credentials": {
+        "httpQueryAuth": {
+          "id": "yuPME7RGvytZtM9j",
+          "name": "Google Gemini"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "assignments": {
+          "assignments": [
+            {
+              "id": "720dadbc-64e6-4e8f-9c22-4d2536013802",
+              "name": "output",
+              "value": "={{ $json.candidates[0].content.parts[0].text }}",
+              "type": "object"
+            }
+          ]
+        },
+        "options": {
+          "ignoreConversionErrors": true
+        }
+      },
+      "id": "3c546251-f823-43ef-ac33-d7423d6af37f",
+      "name": "Refactor result into object",
+      "type": "n8n-nodes-base.set",
+      "typeVersion": 3.3,
+      "position": [
+        1040,
+        900
+      ]
+    },
+    {
+      "parameters": {
+        "options": {}
+      },
+      "id": "6a742bbb-1690-43e3-9c6d-d52ae90e97d2",
+      "name": "Anthropic Chat Model",
+      "type": "@n8n/n8n-nodes-langchain.lmChatAnthropic",
+      "typeVersion": 1.1,
+      "position": [
+        1220,
+        540
+      ],
+      "credentials": {
+        "anthropicApi": {
+          "id": "cawhxaPC8wtPNiou",
+          "name": "Anthropic account"
+        }
+      }
+    },
+    {
+      "parameters": {
+        "promptType": "define",
+        "text": "=Analyze the following news article title: \"{{ $json[\"title\"] }}\"\n\n**Consider the following factors and assign a relevance score (0-1) for each:**\n\n* **Legal keywords:** Does the title contain keywords related to Singaporean law, legal concepts, or specific court cases? (e.g., defamation, contract dispute, Intellectual Property, Court of Appeal)\n* **Government/regulatory keywords:** Does the title mention Singaporean government agencies, ministries, or regulatory bodies relevant to legal matters? (e.g., Ministry of Law, Monetary Authority of Singapore, Singapore Police Force)\n* **Singapore focus:** Does the title explicitly mention Singapore or suggest the situation applies within the Singaporean context?\n* **Business/finance keywords:**  Are there keywords suggesting business or financial issues that could have legal implications in Singapore? (e.g., merger, bankruptcy, data breach)\n\n**Overall relevance score:**\n\nCalculate a weighted average of the individual scores, with a higher weight for \"Legal keywords\" and a lower weight when the article does not contain any keywords relating to legal, business or financial issues. \n\n**Example:**\n\n**Input:** Title: \"New Singapore Law Aims to Combat Online Hate Speech\"\n\n**Output:**\n\n* Relevance score: 0.8 (High)\n* Justification: The title mentions a new law in Singapore (Singapore focus) related to a legal concept (hate speech).\n\n**Input:** Title: \"Free skin, body & hair treatments at Jurong Point Roadshow from Apr. 8 - 14, 2024\"\n\n**Output:**\n\n* Relevance score: 0.1 (Low)\n* Justification: There are no legal keywords or issues suggested by the title and the suggestion of an offer is not relevant to legal professionals.\n",
+        "hasOutputParser": true
+      },
+      "id": "0be2d701-2fa9-4416-bce3-00cdd427095a",
+      "name": "Basic LLM Chain",
+      "type": "@n8n/n8n-nodes-langchain.chainLlm",
+      "typeVersion": 1.4,
+      "position": [
+        1220,
+        320
+      ]
+    },
+    {
+      "parameters": {
+        "conditions": {
+          "options": {
+            "caseSensitive": true,
+            "leftValue": "",
+            "typeValidation": "strict"
+          },
+          "conditions": [
+            {
+              "id": "39591ef1-1326-4962-8a98-6d09ce6a9ee6",
+              "leftValue": "={{ $json.relevance }}",
+              "rightValue": "={{ 0.5}}",
+              "operator": {
+                "type": "number",
+                "operation": "gte"
+              }
+            }
+          ],
+          "combinator": "and"
+        },
+        "options": {}
+      },
+      "id": "eed61979-8c31-4d15-bf2a-214f72e1b4c6",
+      "name": "Filter",
+      "type": "n8n-nodes-base.filter",
+      "typeVersion": 2,
+      "position": [
+        1980,
+        320
+      ]
+    }
+  ],
+  "pinData": {},
+  "connections": {
+    "Schedule Trigger": {
+      "main": [
+        [
+          {
+            "node": "Get Last Execution Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "RSS Read": {
+      "main": [
+        [
+          {
+            "node": "Latest Content only",
+            "type": "main",
+            "index": 0
+          },
+          {
+            "node": "Post Last Execution Time",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "HTML": {
+      "main": [
+        [
+          {
+            "node": "Get Readable Content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Readable Content": {
+      "main": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Structured Output Parser": {
+      "ai_outputParser": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_outputParser",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Edit Fields": {
+      "main": [
+        [
+          {
+            "node": "Filter",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Summarize content": {
+      "main": [
+        [
+          {
+            "node": "Set fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Create CKAN Resource": {
+      "main": [
+        [
+          {
+            "node": "Get resource id",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get resource id": {
+      "main": [
+        [
+          {
+            "node": "Create DataStore Record",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Set fields": {
+      "main": [
+        [
+          {
+            "node": "Create CKAN Resource",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Latest Content only": {
+      "main": [
+        [
+          {
+            "node": "HTML",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Get Last Execution Time": {
+      "main": [
+        [
+          {
+            "node": "RSS Read",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "OpenAI Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Summarize content",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Google Gemini Request": {
+      "main": [
+        [
+          {
+            "node": "Refactor result into object",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Anthropic Chat Model": {
+      "ai_languageModel": [
+        [
+          {
+            "node": "Basic LLM Chain",
+            "type": "ai_languageModel",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Basic LLM Chain": {
+      "main": [
+        [
+          {
+            "node": "Edit Fields",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    },
+    "Filter": {
+      "main": [
+        [
+          {
+            "node": "Summarize content",
+            "type": "main",
+            "index": 0
+          }
+        ]
+      ]
+    }
+  },
+  "active": true,
+  "settings": {
+    "executionOrder": "v1"
+  },
+  "versionId": "a19be8a6-0616-49b5-9a69-f90c40f0d142",
+  "meta": {
+    "templateCredsSetupCompleted": true,
+    "instanceId": "9cae89cbfcc82f2492650ce7cbaeefe4a04e5c318b1ee913cbf47d58143b73d2"
+  },
+  "id": "cJo4VGRGXqZHtsrc",
+  "tags": [
+    {
+      "createdAt": "2024-04-06T11:40:44.245Z",
+      "updatedAt": "2024-04-06T11:40:44.245Z",
+      "id": "ro2EFohmBvXuWGAQ",
+      "name": "zeeker"
+    }
+  ]
+}

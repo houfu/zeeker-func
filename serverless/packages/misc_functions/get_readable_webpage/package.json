@@ -1,0 +1,9 @@
+{
+  "name": "get_readable_webpage",
+  "version": "1.0.0",
+  "main": "main.js",
+  "dependencies": {
+    "@mozilla/readability": "^0.5.0",
+    "jsdom": "^24.0.0"
+  }
+}

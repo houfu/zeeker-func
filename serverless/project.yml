@@ -1,0 +1,15 @@
+parameters: { }
+environment: { }
+packages:
+  - name: misc_functions
+    shared: false
+    environment: { }
+    parameters: { }
+    annotations: { }
+    functions:
+      - name: get_readable_webpage
+        runtime: nodejs:18
+        web: true
+        limits: {
+          timeout: 30000
+        }
